@@ -3,12 +3,19 @@
 #include "..\..\MenuConfig.hpp"
 #include "..\..\OS-ImGui\imgui\imgui.h"
 
+/*
+Not working at all.
+I'm not sure what this is supposed to do.
+And not interested in fixing it.
+--Ukia 10/09/2024
+*/
+
 namespace SkinChanger
 {
 	inline DWORD64 GetWeaponServices(const CEntity& LocalPlayer)
 	{
 		DWORD64 WeaponServices;
-		ProcessMgr.ReadMemory(LocalPlayer.Pawn.Address + Offset::Pawn.WeaponServices, WeaponServices);
+		ProcessMgr.ReadMemory(LocalPlayer.Pawn.Address + Offset::C_BasePlayerPawn.m_pWeaponServices, WeaponServices);
 
 		return WeaponServices;
 	}
@@ -54,7 +61,7 @@ namespace SkinChanger
 	inline DWORD64 GameSenceNode(DWORD64 CHandle)
 	{
 		DWORD64 GameSenceNode;
-		ProcessMgr.ReadMemory(CHandle + Offset::Pawn.GameSceneNode, GameSenceNode);
+		ProcessMgr.ReadMemory(CHandle + Offset::C_BaseEntity.m_pGameSceneNode, GameSenceNode);
 
 		return GameSenceNode;
 	}
@@ -70,7 +77,7 @@ namespace SkinChanger
 	inline DWORD64 GetViewModelServices(const CEntity& LocalPlayer)
 	{
 		DWORD64 ViewModelServices;
-		ProcessMgr.ReadMemory(LocalPlayer.Pawn.Address + Offset::Pawn.ViewModelServices, ViewModelServices);
+		ProcessMgr.ReadMemory(LocalPlayer.Pawn.Address + Offset::C_CSPlayerPawnBase.m_pViewModelServices, ViewModelServices);
 
 		return ViewModelServices;
 	}
@@ -78,7 +85,7 @@ namespace SkinChanger
 	inline DWORD64 GetViewHandle(DWORD64 ViewModelServices)
 	{
 		DWORD64 ViewHandle;
-		ProcessMgr.ReadMemory(ViewModelServices + Offset::Pawn.ViewModel, ViewHandle);
+		ProcessMgr.ReadMemory(ViewModelServices + Offset::CCSPlayer_ViewModelServices.m_hViewModel, ViewHandle);
 
 		return ViewHandle;
 	}

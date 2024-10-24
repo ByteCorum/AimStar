@@ -4,6 +4,7 @@
 #include <vector>
 #include <Tlhelp32.h>
 #include <atlconv.h>
+
 #ifndef USERMODE
 #include <winternl.h>
 #include "driver.hpp"
@@ -12,6 +13,10 @@
 #define _is_invalid(v,n) if(v==NULL) return n
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
 
+namespace MenuConfig
+{
+	inline bool SafeMode = true;
+}
 
 #ifdef USERMODE
 typedef struct _CLIENT_ID
@@ -281,6 +286,8 @@ public:
 	template <typename ReadType>
 	bool WriteMemory(DWORD64 Address, ReadType& Value, int Size)
 	{
+		if (MenuConfig::SafeMode)
+			return false;
 		_is_invalid(hProcess, false);
 		_is_invalid(ProcessID, false);
 
@@ -292,6 +299,8 @@ public:
 	template <typename ReadType>
 	bool WriteMemory(DWORD64 Address, ReadType& Value)
 	{
+		if (MenuConfig::SafeMode)
+			return false;
 		_is_invalid(hProcess, false);
 		_is_invalid(ProcessID, false);
 
@@ -339,8 +348,8 @@ public:
 	template <typename ReadType>
 	bool WriteMemory(DWORD64 Address, ReadType& Value, int Size)
 	{
-		//if (MenuConfig::SafeMode)
-			//return false;
+		if (MenuConfig::SafeMode)
+			return false;
 		driver.write((uintptr_t)Address, Value, Size);
 		return true;
 	}
@@ -348,12 +357,32 @@ public:
 	template <typename ReadType>
 	bool WriteMemory(DWORD64 Address, ReadType& Value)
 	{
-		//if (MenuConfig::SafeMode)
-			//return false;
+		if (MenuConfig::SafeMode)
+			return false;
 		driver.write((uintptr_t)Address, Value);
 		return true;
 	}
 #endif // USERMODE
+
+	//tewshi0 idea
+	std::string ReadString(DWORD64 address, size_t maxLength = 256)
+	{
+		std::vector<char> buffer(maxLength, 0);
+
+		if (!ReadMemory<char>(address, buffer[0], maxLength)) {
+			return "";
+		}
+
+		buffer[maxLength - 1] = '\0';
+
+		size_t actualLength = 0;
+		while (actualLength < maxLength && buffer[actualLength] != '\0') {
+			++actualLength;
+		}
+
+		return std::string(buffer.data(), actualLength);
+	}
+
 	/// <summary>
 	/// 特征码搜索
 	/// </summary>
@@ -361,7 +390,8 @@ public:
 	/// <param name="StartAddress">起始地址</param>
 	/// <param name="EndAddress">结束地址</param>
 	/// <returns>匹配特征结果</returns>
-	std::vector<DWORD64> SearchMemory(const std::string& Signature, DWORD64 StartAddress, DWORD64 EndAddress, int SearchNum = 1);
+	//std::vector<DWORD64> SearchMemory(const std::string& Signature, DWORD64 StartAddress, DWORD64 EndAddress, int SearchNum = 1);
+	//current not use it anymore
 
 
 

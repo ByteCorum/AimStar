@@ -134,3 +134,12 @@ void ImGui::chromaText(std::string text, float sat, float value, float alpha, fl
 		ImGui::PopStyleVar();
 	}
 }
+
+void ImGui::RainbowText(std::string text)
+{
+	static float hue = 0.0f;
+	hue += 0.00001f;
+	if (hue > 1.0f) hue -= 1.0f;
+	ImVec4 color = ImColor::HSV(hue, 1.0f, 1.0f);
+	ImGui::TextColored(color, text.c_str());
+}

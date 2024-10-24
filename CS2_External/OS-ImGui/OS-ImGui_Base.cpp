@@ -18,7 +18,6 @@ namespace OSImGui
         ImFontConfig arialConfig;
         arialConfig.FontDataOwnedByAtlas = false;
         ImFont* arialFont = fontAtlas->AddFontFromFileTTF("c:\\Windows\\Fonts\\msyhbd.ttc", 20.0f, &arialConfig, io.Fonts->GetGlyphRangesAll());
-        
         ImFontConfig iconConfig;
         static const ImWchar iconRanges[] = { ICON_MIN_FA, ICON_MAX_16_FA, 0 };
         iconConfig.MergeMode = true;
@@ -31,6 +30,9 @@ namespace OSImGui
 
         ImFont* WeaponIconFont = fontAtlas->AddFontFromMemoryTTF((void*)cs_icon, sizeof(cs_icon), 25.0f);
 
+        ImFontConfig ESPConfig;
+        ESPConfig.FontDataOwnedByAtlas = false;
+        ImFont* ESPFont = fontAtlas->AddFontFromFileTTF("c:\\Windows\\Fonts\\msyh.ttc", 18.0f, &arialConfig, io.Fonts->GetGlyphRangesAll());
         io.Fonts = fontAtlas;
 
         // ImGui::StyleColorsEnemyMouse();

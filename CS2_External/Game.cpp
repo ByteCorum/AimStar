@@ -17,7 +17,7 @@ bool CGame::InitAddress()
 	this->Address.ForceLeft = GetClientDLLAddress() + Offset::ForceLeft;
 	this->Address.ForceRight = GetClientDLLAddress() + Offset::ForceRight;
 	this->Address.GlobalVars = GetClientDLLAddress() + Offset::GlobalVars;
-
+	this->Address.CSGOInput = GetClientDLLAddress() + Offset::CSGOInput;
 	return this->Address.ClientDLL != 0;
 }
 
@@ -68,9 +68,14 @@ DWORD64 CGame::GetServerPawnAddress()
 
 DWORD64 CGame::GetGlobalVarsAddress()
 {
-	return this->Address.GlobalVars;
+	DWORD64 Global_Vars_Addr = 0;
+	ProcessMgr.ReadMemory(this->Address.GlobalVars, Global_Vars_Addr);
+	return Global_Vars_Addr;
 }
-
+DWORD64 CGame::GetCSGOInputAddress()
+{
+	return this->Address.CSGOInput;
+}
 
 bool CGame::UpdateEntityListEntry()
 {

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <Shellapi.h>
 #include "../Utils/XorStr.h"
+#include <mutex>
 
 namespace Misc
 {
@@ -20,20 +21,18 @@ namespace Misc
 
 		//	globalvars GV;
 		ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize;
-		ImGui::SetNextWindowBgAlpha(0.5f);
+		ImVec4 default_bg_color = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+		default_bg_color.w = 0.5f;
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, default_bg_color);
+		//ImGui::SetNextWindowBgAlpha(0.5f);
 		ImGui::Begin(XorStr("Watermark"), nullptr, windowFlags);
-
-		// Cheat FPS
-		static auto FrameRate = 1.0f;
-		FrameRate = ImGui::GetIO().Framerate;
 
 		// Current Time
 		struct tm ptm;
 		getCurrentTime(&ptm);
 
 		// Player Ping
-		int playerPing;
-		ProcessMgr.ReadMemory(LocalPlayer.Controller.Address + 0x718, playerPing);
+		int playerPing = MenuConfig::Ping;
 
 		// Player Pos
 		Vec3 Pos = LocalPlayer.Pawn.Pos;
@@ -43,13 +42,13 @@ namespace Misc
 
 		ImGui::Text(XorStr("AimStar"));
 		ImGui::Text(XorStr("%d FPS | %d ms | %02d:%02d:%02d"),
-			FrameRate != 0.0f ? static_cast<int>(FrameRate) : 0,
+			MenuConfig::FPS,
 			playerPing,
 			ptm.tm_hour, ptm.tm_min, ptm.tm_sec);
 		ImGui::Text(XorStr("Pos: %.2f, %.2f, %.2f"), Pos.x, Pos.y, Pos.z);
 		ImGui::Text(XorStr("Angle: %.2f, %.2f"), Angle.x, Angle.y);
 		ImGui::Text(XorStr("Vel: %.2f"), LocalPlayer.Pawn.Speed);
-
+		ImGui::PopStyleColor();
 		ImGui::End();
 	}
 
@@ -59,8 +58,8 @@ namespace Misc
 		{
 			uintptr_t pBulletServices;
 			int totalHits;
-			ProcessMgr.ReadMemory(aLocalPlayer.Pawn.Address + Offset::Pawn.BulletServices, pBulletServices);
-			ProcessMgr.ReadMemory(pBulletServices + Offset::Pawn.TotalHit, totalHits);
+			ProcessMgr.ReadMemory(aLocalPlayer.Pawn.Address + Offset::C_CSPlayerPawn.m_pBulletServices, pBulletServices);
+			ProcessMgr.ReadMemory(pBulletServices + Offset::CCSPlayer_BulletServices.m_totalHitsOnServer, totalHits);
 
 			if (totalHits != PreviousTotalHits) {
 				if (totalHits == 0 && PreviousTotalHits != 0)
@@ -115,6 +114,7 @@ namespace Misc
 
 	void HitMarker(float Size, float Gap)
 	{
+		std::lock_guard<std::mutex> lock(std::mutex);
 		ImGuiIO& io = ImGui::GetIO();
 		ImVec2 center = ImVec2(Gui.Window.Size.x / 2, Gui.Window.Size.y / 2);
 
@@ -135,14 +135,30 @@ namespace Misc
 
 	void FlashImmunity(const CEntity& aLocalPlayer) noexcept
 	{
+		if (MiscCFG::FlashImmunity == 0)
+			return;
 		float MaxAlpha = 255.f - MiscCFG::FlashImmunity;
-		ProcessMgr.WriteMemory(aLocalPlayer.Pawn.Address + Offset::Pawn.flFlashMaxAlpha, MaxAlpha);
+		ProcessMgr.WriteMemory(aLocalPlayer.Pawn.Address + Offset::C_CSPlayerPawnBase.m_flFlashMaxAlpha, MaxAlpha);
 	}
 
-	void FastStop() noexcept
+	void FastStop(const CEntity& aLocalPlayer) noexcept
 	{
 		if (!MiscCFG::FastStop)
 			return;
+		const float Trigger_Value = 24.f;//¼±Í£ÖÕÖ¹ËÙ¶È
+		if (!(GetAsyncKeyState('W') || GetAsyncKeyState('A') || GetAsyncKeyState('S') || GetAsyncKeyState('D') || GetAsyncKeyState(VK_SPACE) || GetAsyncKeyState(VK_LSHIFT)) && aLocalPlayer.Pawn.Speed > Trigger_Value && AirCheck(aLocalPlayer))
+		{
+				const auto LocalVel = aLocalPlayer.Pawn.Velocity;
+				const auto LocalYaw = aLocalPlayer.Pawn.ViewAngle.y;
+				const auto X = (LocalVel.x * cos(LocalYaw / 180 * 3.1415926) + LocalVel.y * sin(LocalYaw / 180 * 3.1415926));
+				const auto Y = (LocalVel.y * cos(LocalYaw / 180 * 3.1415926) - LocalVel.x * sin(LocalYaw / 180 * 3.1415926));
+				if (X > Trigger_Value) { keybd_event('S', MapVirtualKey('S', 0), KEYEVENTF_SCANCODE, 0); std::this_thread::sleep_for(std::chrono::milliseconds(1)); keybd_event('S', MapVirtualKey('S', 0), KEYEVENTF_KEYUP, 0);}
+				else if (X < -Trigger_Value) { keybd_event('W', MapVirtualKey('W', 0), KEYEVENTF_SCANCODE, 0); std::this_thread::sleep_for(std::chrono::milliseconds(1)); keybd_event('W', MapVirtualKey('W', 0), KEYEVENTF_KEYUP, 0); }
+				if (Y > Trigger_Value) { keybd_event('D', MapVirtualKey('D', 0), KEYEVENTF_SCANCODE, 0); std::this_thread::sleep_for(std::chrono::milliseconds(1)); keybd_event('D', MapVirtualKey('D', 0), KEYEVENTF_KEYUP, 0); }
+				else if (Y < -Trigger_Value) { keybd_event('A', MapVirtualKey('A', 0), KEYEVENTF_SCANCODE, 0); std::this_thread::sleep_for(std::chrono::milliseconds(1)); keybd_event('A', MapVirtualKey('A', 0), KEYEVENTF_KEYUP, 0); }
+		}
+
+		/*
 		// Disable when bhopping
 		if (GetAsyncKeyState(VK_SPACE) & 0x8000)
 			return;
@@ -154,6 +170,7 @@ namespace Misc
 		Misc::StopKeyEvent('D', &dKeyPressed, 'A', 50.f);
 		Misc::StopKeyEvent('W', &wKeyPressed, 'S', 50.f);
 		Misc::StopKeyEvent('S', &sKeyPressed, 'W', 50.f);
+		*/
 	}
 	/*
 	// This feature was removed temporarily from Cheats.hpp, because it may crash the game
@@ -232,20 +249,22 @@ namespace Misc
 			return;
 
 		bool SpottedStatus = true;
-		ProcessMgr.WriteMemory(EntityList.Pawn.Address + Offset::Pawn.bSpottedByMask, SpottedStatus);
+		ProcessMgr.WriteMemory(EntityList.Pawn.Address + Offset::C_CSPlayerPawn.m_bSpottedByMask, SpottedStatus);
 	}
 
 	void FovChanger(const CEntity& aLocalPlayer) noexcept
 	{
+		if (MiscCFG::Fov == 90)
+			return;
 		DWORD64 CameraServices = 0;
 		if (Zoom)
 			return;
 
-		if (!ProcessMgr.ReadMemory<DWORD64>(aLocalPlayer.Pawn.Address + Offset::Pawn.CameraServices, CameraServices))
+		if (!ProcessMgr.ReadMemory<DWORD64>(aLocalPlayer.Pawn.Address + Offset::C_BasePlayerPawn.m_pCameraServices, CameraServices))
 			return;
 
 		UINT Desiredfov = static_cast<UINT>(MiscCFG::Fov);
-		ProcessMgr.WriteMemory<UINT>(aLocalPlayer.Controller.Address + Offset::Pawn.DesiredFov, Desiredfov);
+		ProcessMgr.WriteMemory<UINT>(aLocalPlayer.Controller.Address + Offset::CBasePlayerController.m_iDesiredFOV, Desiredfov);
 
 	}
 
@@ -275,22 +294,6 @@ namespace Misc
 		}
 	}
 
-	void FakeDuck(const CEntity& aLocalPlayer) noexcept
-	{
-
-		DWORD64 MovementServices;
-		float Tick;
-		bool Ducking = 1, unDuck = 0;
-		ProcessMgr.ReadMemory(aLocalPlayer.Pawn.Address + Offset::Pawn.MovementServices, MovementServices);
-		if (!MiscCFG::Jitter)
-		{
-			ProcessMgr.WriteMemory(MovementServices + Offset::Pawn.CrouchState, unDuck);
-		}
-		else {
-			ProcessMgr.WriteMemory(MovementServices + Offset::Pawn.CrouchState, Ducking);
-		}
-	}
-
 	void BunnyHop(const CEntity& Local) noexcept
 	{
 		if (!MiscCFG::BunnyHop)
@@ -299,8 +302,7 @@ namespace Misc
 		HWND hwnd_perfectworld = FindWindowA(NULL, "\u53cd\u6050\u7cbe\u82f1\uff1a\u5168\u7403\u653b\u52bf");
 
 		if (hwnd_cs2 == NULL) {
-			hwnd_cs2 = FindWindowA(NULL, "Counter-Strike 2");
-			HWND foreground_window = hwnd_perfectworld;
+			hwnd_cs2 = hwnd_perfectworld;
 		}
 		int ForceJump;
 		bool spacePressed = GetAsyncKeyState(VK_SPACE);
@@ -312,13 +314,14 @@ namespace Misc
 			// As of the latest update (11/8/2023) bhop doesn't work at all with sendinput,
 			// if +jump is sent on the same tick that you land on the ground, the jump won't register.
 			// But you can add 15ms of delay right before your sendinput to fix this problem temporarily
-			std::this_thread::sleep_for(std::chrono::microseconds(15625));
+			std::this_thread::sleep_for(std::chrono::microseconds(15626));
 			// Refer to -> https://www.unknowncheats.me/forum/counter-strike-2-a/609480-sendinput-bhop-inconsistency.html
 			//gGame.SetForceJump(65537);
-			SendMessage(hwnd_cs2, WM_KEYUP, VK_SPACE, 0);
 			SendMessage(hwnd_cs2, WM_KEYDOWN, VK_SPACE, 0);
-		}
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			SendMessage(hwnd_cs2, WM_KEYUP, VK_SPACE, 0);
 
+		}
 		else if (spacePressed && !isInAir) // AirCheck = 0, isn't on ground
 		{
 			//gGame.SetForceJump(256);
@@ -357,7 +360,7 @@ namespace Misc
 		// When player reloading their weapon, cancel Scope
 		DWORD64 WeaponService;
 		bool inReload;
-		ProcessMgr.ReadMemory(aLocalPlayer.Pawn.Address + Offset::Pawn.pClippingWeapon, WeaponService);
+		ProcessMgr.ReadMemory(aLocalPlayer.Pawn.Address + Offset::C_CSPlayerPawnBase.m_pClippingWeapon, WeaponService);
 		ProcessMgr.ReadMemory(WeaponService + Offset::WeaponBaseData.inReload, inReload);
 		if (inReload)
 		{
@@ -379,7 +382,7 @@ namespace Misc
 		if (Zoom)
 		{
 			UINT Scopefov = 45;
-			ProcessMgr.WriteMemory<UINT>(aLocalPlayer.Controller.Address + Offset::Pawn.DesiredFov, Scopefov);
+			ProcessMgr.WriteMemory<UINT>(aLocalPlayer.Controller.Address + Offset::CBasePlayerController.m_iDesiredFOV, Scopefov);
 		}
 			
 	}
@@ -423,8 +426,7 @@ namespace Misc
 		bool isOnGround = AirCheck(Local);
 		if (!isOnGround)
 		{
-			Vec3 Velocity;
-			ProcessMgr.ReadMemory<Vec3>(Local.Pawn.Address + Offset::Pawn.AbsVelocity, Velocity);
+			Vec3 Velocity = Local.Pawn.Velocity;
 
 			if (Velocity.z > 250.f || Velocity.z < 200.f)
 				return;
@@ -433,28 +435,67 @@ namespace Misc
 			mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
 		}
 	}
+	DWORD64 GethPawn(uint64_t Target)
+	{
+		DWORD64 EntityPawnListEntry = 0;
+		DWORD64 EntityPawnAddress = 0;
 
-	void SpectatorList(const CEntity& Local, const CEntity& Entity) {
+		if (!ProcessMgr.ReadMemory<DWORD64>(gGame.GetEntityListAddress(), EntityPawnListEntry))
+			return 0;
+
+		if (!ProcessMgr.ReadMemory<DWORD64>(EntityPawnListEntry + 0x10 + 8 * ((Target & 0x7FFF) >> 9), EntityPawnListEntry))
+			return 0;
+
+		if (!ProcessMgr.ReadMemory<DWORD64>(EntityPawnListEntry + 0x78 * (Target & 0x1FF), EntityPawnAddress))
+			return 0;
+
+		return EntityPawnAddress;
+	}
+	void SpectatorList(const CEntity& Local) {
 		if (!MiscCFG::SpecList)
 			return;
 
-		std::vector<std::string> spectators;
+		//render method de tkkr by ukia
+		ImGui::SetNextWindowSizeConstraints(ImVec2(200, 100), ImGui::GetIO().DisplaySize);
+		ImGui::Begin(XorStr("Spectators"), nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_::ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_::ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_::ImGuiWindowFlags_NoNav);
+		{
+			ImGui::SetCursorPosY(22);
+			if (!MenuConfig::ValidEntity.empty())
+			{
+				int count = 0;
+				for (int index = 0; index < MenuConfig::ValidEntity.size(); index++)//traverse again.
+				{
+					
+					CEntity Entity = MenuConfig::ValidEntity[index].first;
+					DWORD64 EntityAddress = MenuConfig::ValidEntity[index].second;
+					auto pPlayer = Entity.Controller;
+					
+					/*
+					if (!Entity.UpdatePawn(Entity.Pawn.Address))
+						continue;
+					*/
 
-		DWORD64 l_pawn, l_observe, l_spec;
-		ProcessMgr.ReadMemory(Entity.Controller.Address + Offset::PlayerController.m_pObserverServices, l_pawn);
-		ProcessMgr.ReadMemory(l_pawn + Offset::PlayerController.m_hObserverTarget, l_observe);
-		ProcessMgr.ReadMemory(l_observe + Offset::PlayerController.m_hController, l_spec);
+					//jakebooom idea + tokikiri stuff
+					uintptr_t obsServices;
+					if (!ProcessMgr.ReadMemory(Entity.Pawn.Address + Offset::C_BasePlayerPawn.m_pObserverServices, obsServices))
+						continue;
 
-		if (l_observe == Local.Pawn.Address) {
-			spectators.push_back(Entity.Controller.PlayerName);
+					uint64_t obsTarget;
+					if (!ProcessMgr.ReadMemory(obsServices + Offset::CPlayer_ObserverServices.m_hObserverTarget, obsTarget))
+						continue;
+					uintptr_t obsPawn = GethPawn(obsTarget);
+
+					if (obsPawn != Local.Pawn.Address)
+						continue;
+
+					std::string Name = pPlayer.PlayerName;
+					ImGui::BulletText(Name.c_str());
+				}
+			}
 		}
 
-		if (spectators.empty())
-			return;
+		ImGui::End();
 
-		for (size_t i{}; i < spectators.size(); ++i) {
-			auto msg = spectators[i];
-			Gui.StrokeText(msg.substr(0, 24), ImVec2(Gui.Window.Size.x / 2, Gui.Window.Size.y / 2), 18.f, true);
-		}
 	}
+
 }

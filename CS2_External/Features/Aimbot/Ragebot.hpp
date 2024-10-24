@@ -19,7 +19,7 @@ namespace AimControl
 {
     inline bool Rage = false;
 
-    extern int HotKey;
+    extern unsigned int HotKey;
     extern int AimBullet;
     extern bool ScopeOnly;
     extern bool AutoShot;
@@ -42,7 +42,7 @@ namespace AimControl
         if (AimControl::ScopeOnly)
         {
             bool isScoped;
-            ProcessMgr.ReadMemory<bool>(Local.Pawn.Address + Offset::Pawn.isScoped, isScoped);
+            ProcessMgr.ReadMemory<bool>(Local.Pawn.Address + Offset::C_CSPlayerPawn.m_bIsScoped, isScoped);
             if (!isScoped) {
                 return;
             }

@@ -54,10 +54,23 @@ namespace ConfigMenu {
 		}
 		ImGui::SameLine();
 		if (ImGui::Button(Lang::ConfigText.Save, { 126.f, 30.f }) && selectedConfig >= 0 && selectedConfig < configFiles.size())
+			ImGui::OpenPopup("##reallySave");
+		if (ImGui::BeginPopup("##reallySave"))
 		{
-			std::string selectedConfigFile = configFiles[selectedConfig];
-			MyConfigSaver::SaveConfig(selectedConfigFile);
+			ImGui::TextUnformatted("Are you sure?");
+			if (ImGui::Button("No", { 45.0f, 0.0f }))
+				ImGui::CloseCurrentPopup();
+			ImGui::SameLine();
+			if (ImGui::Button("Yes", { 45.0f, 0.0f }))
+			{
+				// Save
+				std::string selectedConfigFile = configFiles[selectedConfig];
+				MyConfigSaver::SaveConfig(selectedConfigFile);
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::EndPopup();
 		}
+
 
 		ImGui::SetCursorPosX(CurrentCursorX + CursorX);
 		if (ImGui::Button(Lang::ConfigText.Delete, { 126.f, 30.f }) && selectedConfig >= 0 && selectedConfig < configFiles.size())
@@ -206,15 +219,14 @@ namespace ConfigMenu {
 		MenuConfig::VisibleCheck = true;
 		MenuConfig::ShowHeadShootLine = false;
 		MenuConfig::HeadShootLineColor = ImColor(255, 255, 255, 200);
-		MenuConfig::AimBotHotKey = 0;
-		AimControl::SetHotKey(MenuConfig::AimBotHotKey);
+		TriggerBot::HotKey = VK_LBUTTON;
+		//AimControl::SetHotKey(MenuConfig::AimBotHotKey);
 		ESPConfig::ShowLineToEnemy = false;
 		MenuConfig::FovLineSize = 60.0f;
 		TriggerBot::TriggerDelay = 90;
 		TriggerBot::ShotDuration = 500;
 		RCS::RCSBullet = 1;
-		MenuConfig::TriggerHotKey = 0;
-		TriggerBot::SetHotKey(MenuConfig::TriggerHotKey);
+		TriggerBot::HotKey = VK_XBUTTON2;
 		RCS::RCSScale = ImVec2(1.2f, 1.4f);
 		AimControl::ScopeOnly = false;
 		AimControl::AutoShot = false;

@@ -2,6 +2,7 @@
 #include "Bone.h"
 #include "Game.h"
 #include "Utils/Random.h"
+#include "Entity.h"
 
 namespace MenuConfig
 {
@@ -11,34 +12,43 @@ namespace MenuConfig
 	inline std::string HWID = "";
 	inline bool DRM = false;
 	inline bool DEC = false;
+	inline HWND ConsoleHandle = nullptr;
 
 	struct {
 		// 0: Visual 1: Aimbot 2: Misc 3: Config
 		int MenuPage = 0;
-		ImVec2 LogoPos				= ImVec2(20.f, 30.f);
-		ImVec2 Logo2Pos				= ImVec2(15.f, 25.f);
-		ImVec2 Logo3Pos				= ImVec2(15.f, 30.f);
-		ImVec2 Button1Pos			= ImVec2(20.f, 120.f);
-		ImVec2 Button2Pos			= ImVec2(20.f, 120.f + 60.f);
-		ImVec2 Button3Pos			= ImVec2(20.f, 120.f + 120.f);
-		ImVec2 Button4Pos			= ImVec2(20.f, 120.f + 180.f);
-		ImVec2 ChildPos				= ImVec2(190.f, 15.f);
-		ImVec2 ChildSize			= ImVec2(645.f, 485.f);
-		ImColor BorderColor_Yellow	= ImColor(255, 204, 0, 255);
-		ImColor BorderColor_Purple	= ImColor(255, 0, 238, 255);
-		ImColor BorderColor_Red		= ImColor(200, 40, 40, 255);
-		ImColor BorderColor_Light	= ImColor(168, 197, 209, 250);
-	} WCS;	// Window Component Settings
+		ImVec2 LogoPos =	ImVec2(20.f, 30.f);
+		ImVec2 Logo2Pos =	ImVec2(15.f, 25.f);
+		ImVec2 Logo3Pos =	ImVec2(15.f, 30.f);
+		ImVec2 Button1Pos = ImVec2(20.f, 120.f);
+		ImVec2 Button2Pos = ImVec2(20.f, 120.f + 60.f);
+		ImVec2 Button3Pos = ImVec2(20.f, 120.f + 120.f);
+		ImVec2 Button4Pos = ImVec2(20.f, 120.f + 180.f);
+		ImVec2 ChildPos =	ImVec2(190.f, 15.f);
+		ImVec2 ChildSize =	ImVec2(645.f, 485.f);
+		ImColor BorderColor_Yellow =	ImColor(255, 204, 0, 255);
+		ImColor BorderColor_Purple =	ImColor(255, 0, 238, 255);
+		ImColor BorderColor_Red =		ImColor(200, 40, 40, 255);
+		ImColor BorderColor_Light =		ImColor(168, 197, 209, 250);
+		ImColor BorderColor_Fanta =		ImVec4(0.8509804010391235f, 0.105882354080677f, 0.4156862795352936f, 1.0f);
+	} WCS;    // Window Component Settings
 	inline std::wstring SteamPath = L"";
 	inline std::wstring AvatarPath = L"";
 	inline std::string Country = "";
 	inline std::string UserName = "";
 	inline std::string CurMap = "";
+	inline float CurTime = 0;
+	inline float ChkTime = 0;
+	inline int32_t TickCount = 0;
+	inline int FPS = 0;
 	inline int MaxFrameRate = 60;
+	inline int Ping = 0;
 	inline bool defaultConfig = false;
 	inline int Language = 0;
 	inline int Theme = 3;
 	inline int MaxRenderFPS = 1200;
+
+	inline std::vector<std::pair<CEntity, DWORD64>> ValidEntity;
 
 	inline bool AirJump = false;
 	inline float ComboWidth = 100.f;
@@ -49,7 +59,6 @@ namespace MenuConfig
 	inline bool AimBot = false;
 	inline bool AimAlways = false;
 	inline bool AimToggleMode = false;
-	inline int AimBotHotKey = 0;
 	// 0: head 1: neck 3: spine
 	inline int  AimPosition = 0;
 	inline int  SparyPosition = 0;
@@ -68,10 +77,10 @@ namespace MenuConfig
 	inline ImColor FovCircleColor = ImColor(180, 255, 0, 255);
 
 	inline bool ShowMenu = true;
+	inline bool ShowConsole = true;
 
 	inline bool TriggerBot = false;
 	inline bool TriggerAlways = false;
-	inline int TriggerHotKey = 0;
 
 	inline bool TeamCheck = true;
 
@@ -93,6 +102,7 @@ namespace MenuConfig
 namespace ESPConfig
 {
 	inline bool ESPenabled = true;
+	inline bool AlwaysActive = false;
 	inline bool AmmoBar = false;
 	inline bool ShowScoping = false;
 	inline bool ShowBoneESP = true;
